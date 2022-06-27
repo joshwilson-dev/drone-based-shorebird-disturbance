@@ -43,9 +43,9 @@ data <- read_csv("data/dibd_data.csv")
 prepare_data <- function(df) {
     # create ped parameters
     data_ped <- df %>%
-        group_by(test, approach, target_species) %>%
+        group_by(flight, species) %>%
         mutate(
-            ped_status = lead(target_response),
+            ped_status = lead(response),
             tstart = time_since_launch,
             tend = lead(time_since_launch),
             interval = tend - tstart,

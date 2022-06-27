@@ -34,14 +34,13 @@ lapply(packages, require, character.only = TRUE)
 
 # import data
 data_ped <- read_csv("data/dibd_ped_data.csv") %>%
-    mutate(target_flock = as.factor(target_flock))
+    mutate(flock = as.factor(flock))
 
 #########################
 #### Analysis of fit ####
 #########################
 # load model and print outputs
-fit <- readRDS("models/dibd-model-25-06-22_14-17.rds")
-
+fit <- readRDS("models/dibd-model-27-06-22_10-19.rds")
 summary(fit)
 
 # create dataframes investigating fit of each model parameter individually
@@ -83,20 +82,22 @@ new_data <- function(variable) {
 
 # run the above function for each explanitory variable
 variables <- c(
-    "stimulus_specification",
-    "stimulus_dxy_m",
-    "stimulus_dz_m",
-    "stimulus_vxy_ms",
-    "stimulus_vz_ms",
+    "specification",
+    "distance_x",
+    "distance_z",
+    "velocity_x",
+    "velocity_y",
+    "velocity_z",
+    "acceleration",
     "tend",
-    "environment_obscured",
-    "environment_wind_ms",
-    "environment_cloud_p",
-    "environment_peaktide_hrs",
-    "environment_temperature_dc",
-    "environment_location",
-    "count_eastern_curlew",
-    "target_flock")
+    "obscuring",
+    "wind_speed",
+    "cloud_cover",
+    "high_tide",
+    "temperature",
+    "location",
+    "count",
+    "flock")
 
 invisible(mapply(new_data, variables))
 
@@ -123,22 +124,22 @@ plot_fit <- function(variable) {
     # if categorica predictor
     else {
         plot <- (
-            ggplot( data = dataframe, aes(.data[[variable]], y = fit)) +
+            ggplot(data = dataframe, aes(.data[[variable]], y = fit)) +
             coord_cartesian(ylim = c(-10, 10)) +
             geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper)) +
             ylab("Effect"))
     }
 
     # Setting axis labels
-    if (variable == "stimulus_dxy_m") plot <- plot + xlab("Approach Velocity [m/s]")
-    if (variable == "count_eastern_curlew") plot <- plot + xlab("Count")
-    if (variable == "stimulus_dz_m") plot <- plot + xlab("Ascent Velocity [m/s]")
+    if (variable == "distance_x") plot <- plot + xlab("Approach Velocity [m/s]")
+    if (variable == "count") plot <- plot + xlab("Count")
+    if (variable == "distance_z") plot <- plot + xlab("Ascent Velocity [m/s]")
     if (variable == "tend") plot <- plot + xlab("Time Since Launch [s]")
-    if (variable == "environment_wind_ms") plot <- plot + xlab("Wind Speed [m/s]")
-    if (variable == "environment_cloud_p") plot <- plot + xlab("Cloud Cover [%]")
-    if (variable == "environment_peaktide_hrs") plot <- plot + xlab("Time From High Tide [hr]")
-    if (variable == "environment_temperature_dc") plot <- plot + xlab("Temperature (\u00B0C)")
-    if (variable == "target_flock") plot <- plot + xlab("Flock")
+    if (variable == "wind_speed") plot <- plot + xlab("Wind Speed [m/s]")
+    if (variable == "cloud_cover") plot <- plot + xlab("Cloud Cover [%]")
+    if (variable == "high_tide") plot <- plot + xlab("Time From High Tide [hr]")
+    if (variable == "temperature") plot <- plot + xlab("Temperature (\u00B0C)")
+    if (variable == "flock") plot <- plot + xlab("Flock")
 
     # making plot aesthetics
     plot <- plot +
@@ -161,9 +162,9 @@ plot_fit <- function(variable) {
         plot <- plot +
             scale_x_continuous(expand = c(0, 0))}
     if (
-        variable == "stimulus_specification" |
-        variable == "environment_location" |
-        variable == "environment_obscured") {
+        variable == "specification" |
+        variable == "location" |
+        variable == "obscuring") {
         height <- 15
         width <- 12.5
         plot <- plot +
@@ -173,7 +174,7 @@ plot_fit <- function(variable) {
                     angle = 90,
                     vjust = 0.5,
                     hjust = 0.95))}
-    if (variable == "target_flock") {
+    if (variable == "flock") {
         plot <- plot + theme(axis.text.x = element_blank())}
     # saving the plots
     ggsave(title, plot, height = height, width = width)
