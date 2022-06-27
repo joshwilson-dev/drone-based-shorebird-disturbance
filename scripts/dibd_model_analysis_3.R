@@ -17,7 +17,7 @@
 rm(list = ls())
 
 # Specify required packages
-packages <- c("readr", "dplyr", "ggplot2", "mgcv", "pammtools")
+packages <- c("readr", "dplyr", "ggplot2", "mgcv", "gratia")
 new_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
 
 if (length(new_packages)) {
@@ -39,146 +39,93 @@ data_ped <- read_csv("data/dibd_ped_data.csv") %>%
 #########################
 #### Analysis of fit ####
 #########################
-# load model and print outputs
+# load model and print summary
 fit <- readRDS("models/dibd-model-27-06-22_10-19.rds")
 summary(fit)
 
-# create dataframes investigating fit of each model parameter individually
-new_data <- function(variable) {
-    print(variable)
-    df_i <- data.frame()
-    variable_type <- typeof(eval(parse(text = paste0("data_ped$", variable))))
-    # the below creates a dataframe varying the specified variables then
-    # determines the contribution of that variable to the fit of the model
-    new_dataframe <- data_ped %>%
-        ungroup() %>%
-        mutate(new_column = !!sym(variable)) %>%
-    {
-        # if the explanitory variable is numerical
-        if (variable_type == "double") {
-            # create dataset with specified variable varying
-            make_newdata(
-                .,
-                new_column = seq_range(!!sym(variable), n = 100)) %>%
-            select(-!!sym(variable)) %>%
-            rename({{variable}} := new_column) %>%
-            # use model to predict contribution of explanitory variable
-            add_term(., fit, term = variable)
-        }
-        # if the explaitory variable is catagorical
-        else {
-            make_newdata(., new_column = unique(!!sym(variable))) %>%
-            select(-!!sym(variable)) %>%
-            rename({{variable}} := new_column) %>%
-            add_term(., fit, term = variable)
-        }
-    }
-    df_i <- bind_rows(df_i, new_dataframe)
-    assign(
-        paste0("fit_", variable),
-        df_i,
-        envir = .GlobalEnv)
-}
-
-# run the above function for each explanitory variable
-variables <- c(
-    "specification",
-    "distance_x",
-    "distance_z",
-    "velocity_x",
-    "velocity_y",
-    "velocity_z",
-    "acceleration",
-    "tend",
-    "obscuring",
-    "wind_speed",
-    "cloud_cover",
-    "high_tide",
-    "temperature",
-    "location",
-    "count",
-    "flock")
-
-invisible(mapply(new_data, variables))
-
-# plot the contribution of each explnitory variable
-plot_fit <- function(variable) {
-    dataframe <- eval(parse(text = paste0("fit_", variable)))
-    variable_type <- typeof(
-        eval(parse(text = paste0("fit_", variable, "$", variable))))
-    height <- 10
-    width <- 10
-    title <- paste0("plots/plot_", variable, ".png")
-
-    # if numerical predictor
-    if (variable_type == "double") {
-        plot <- (
-            ggplot(data = dataframe, aes(.data[[variable]], y = fit)) +
-            geom_line() +
-            coord_cartesian(ylim = c(-10, 10)) +
-            geom_ribbon(
-                aes(ymin = ci_lower, ymax = ci_upper),
-                alpha = 0.2) +
-            ylab("Effect"))
-    }
-    # if categorica predictor
-    else {
-        plot <- (
-            ggplot(data = dataframe, aes(.data[[variable]], y = fit)) +
-            coord_cartesian(ylim = c(-10, 10)) +
-            geom_pointrange(aes(ymin = ci_lower, ymax = ci_upper)) +
-            ylab("Effect"))
-    }
-
-    # Setting axis labels
-    if (variable == "distance_x") plot <- plot + xlab("Approach Velocity [m/s]")
-    if (variable == "count") plot <- plot + xlab("Count")
-    if (variable == "distance_z") plot <- plot + xlab("Ascent Velocity [m/s]")
-    if (variable == "tend") plot <- plot + xlab("Time Since Launch [s]")
-    if (variable == "wind_speed") plot <- plot + xlab("Wind Speed [m/s]")
-    if (variable == "cloud_cover") plot <- plot + xlab("Cloud Cover [%]")
-    if (variable == "high_tide") plot <- plot + xlab("Time From High Tide [hr]")
-    if (variable == "temperature") plot <- plot + xlab("Temperature (\u00B0C)")
-    if (variable == "flock") plot <- plot + xlab("Flock")
-
-    # making plot aesthetics
-    plot <- plot +
+# smooth terms
+plot_smooth_term <- function(smooth) {
+    data <- smooth_estimates(fit, smooth = smooth)
+    term <- str_sub(smooth, 3, -2)
+    plot <- ggplot(data, aes(x = !!sym(term))) +
+        geom_line(aes(y = est)) +
+        geom_ribbon(aes(ymin = est - se, ymax = est + se), alpha = 0.2) +
+        coord_cartesian(ylim = c(-10, 10)) +
+        ylab("Effect") +
+        geom_rug(data = data_ped, aes(x = !!sym(term))) +
         theme_bw() +
         scale_y_continuous(expand = c(0, 0)) +
-        theme(
-            plot.margin = margin(0.5, 0.5, 0.5, 0.5, "in"),
-            axis.ticks = element_line(size = 2),
-            axis.ticks.length = unit(.15, "in"),
-            axis.text = element_text(size = 40),
-            axis.title = element_text(size = 40, face = "bold"),
-            legend.position = c(.90, .23),
-            legend.key.size = unit(0.5, "in"),
-            legend.title.align = 0.5,
-            legend.text.align = 0.5,
-            legend.box.background = element_rect(color = "black", size = 1),
-            legend.text = element_text(size = 30),
-            legend.title = element_text(size = 30, face = "bold"))
-    if (variable_type == "double") {
-        plot <- plot +
-            scale_x_continuous(expand = c(0, 0))}
-    if (
-        variable == "specification" |
-        variable == "location" |
-        variable == "obscuring") {
-        height <- 15
-        width <- 12.5
-        plot <- plot +
-            theme(
-                axis.title.x = element_blank(),
-                axis.text.x = element_text(
-                    angle = 90,
-                    vjust = 0.5,
-                    hjust = 0.95))}
-    if (variable == "flock") {
-        plot <- plot + theme(axis.text.x = element_blank())}
-    # saving the plots
+        scale_x_continuous(expand = c(0, 0))
+
+    if (term == "distance_x") plot <- plot + xlab("Distance [m]")
+    if (term == "distance_z") plot <- plot + xlab("Altitude [m]")
+    if (term == "velocity_x") plot <- plot + xlab("Approach Velocity [m/s]")
+    if (term == "velocity_y") plot <- plot + xlab("Transverse Velocity [m/s]")
+    if (term == "velocity_z") plot <- plot + xlab("Ascent Velocity [m/s]")
+    if (term == "acceleration") plot <- plot + xlab("Acceleration [m/s/s]")
+    if (term == "count") plot <- plot + xlab("Count")
+    if (term == "tend") plot <- plot + xlab("Time Since Launch [s]")
+    if (term == "wind_speed") plot <- plot + xlab("Wind Speed [m/s]")
+    if (term == "cloud_cover") plot <- plot + xlab("Cloud Cover [%]")
+    if (term == "high_tide") plot <- plot + xlab("Time From High Tide [hr]")
+    if (term == "temperature") plot <- plot + xlab("Temperature (\u00B0C)")
+
+    title <- paste0("plots/", term, ".png")
+    height <- 3
+    width <- 3
     ggsave(title, plot, height = height, width = width)
 }
 
-# running plot_fit function for each explanitory variable
-mapply(plot_fit, variables)
+mapply(plot_smooth_term, smooths(fit)[smooths(fit) != "s(flock)"])
+
+# factors
+plot_factor_term <- function(term) {
+    newdata <- sample_info(group_by(data_ped, !!sym(term)))
+    prediction <- predict(
+        fit,
+        newdata = newdata,
+        type = "terms",
+        terms = term,
+        se.fit = TRUE)
+    newdata <- cbind(newdata, prediction) %>%
+        mutate(
+            specification = str_to_title(specification),
+            obscuring = str_to_title(obscuring),
+            location = case_when(
+                location == "toorbul" ~ "Toorbul",
+                location == "geoff skinner wetland" ~ "Wellington Point",
+                location == "queens esplanade" ~ "Thorneside"))
+
+    plot <- ggplot(data = newdata, aes(x = .data[[term]], y = fit)) +
+        geom_pointrange(
+            aes(
+                ymin = fit - (1.96 * se.fit),
+                ymax = fit + (1.96 * se.fit))) +
+        coord_cartesian(ylim = c(-10, 10)) +
+        ylab("Effect") +
+        theme_bw() +
+        scale_y_continuous(expand = c(0, 0)) +
+        theme(
+            axis.title.x = element_blank(),
+            axis.text.x = element_text(
+                angle = 90,
+                vjust = 0.5,
+                hjust = 0.95))
+
+    title <- paste0("plots/", term, ".png")
+    height <- 3
+    width <- 3
+    ggsave(title, plot, height = height, width = width)
+}
+factors <- c("specification", "obscuring", "location")
+mapply(plot_factor_term, factors)
+
+# random effects
+plot <- draw(fit, select = "s(flock)") +
+    coord_cartesian(ylim = c(-10, 10)) +
+    ylab("Effect") +
+    theme_bw() +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0, 0)) +
+    theme(plot.title = element_text(hjust = 0.5))
+ggsave("plots/flock.png", plot, height = 3, width = 3)
