@@ -113,7 +113,7 @@ plot_factor_term <- function(term) {
                 hjust = 0.95))
 
     title <- paste0("plots/", term, ".png")
-    height <- 3
+    height <- 3.5
     width <- 3
     ggsave(title, plot, height = height, width = width)
 }

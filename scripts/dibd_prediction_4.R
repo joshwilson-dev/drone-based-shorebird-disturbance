@@ -42,15 +42,14 @@ data_ped <- read_csv("data/dibd_ped_data.csv") %>%
 
 # load model
 fit <- readRDS("models/dibd-model-27-06-22_10-19.rds")
-summary(fit)
+
 # determine the mean, or mode for all numerical or categorical variables
 ref <- data_ped %>%
     ungroup() %>%
     sample_info()
 
 # load test flight launched from 300m, approach at 120m
-test_flight <- read_csv("data/dibd_test_flight.csv") %>%
-    filter(time_since_launch %% 1 == 0)
+test_flight <- read_csv("data/dibd_test_flight_500.csv")
 
 # This function adds the required explanitory variables to the test flight
 log_simulator <- function(fit, altitude_list) {
@@ -83,7 +82,7 @@ log_simulator <- function(fit, altitude_list) {
                 wind_speed = ref$wind_speed,
                 temperature = ref$temperature,
                 location = ref$location,
-                specification = "mavic 2 pro",
+                specification = "inspire 2",
                 obscuring = "not obscured",
                 count = ref$count,
                 altitude = altitude)
@@ -123,27 +122,27 @@ flight_log <- survival_data %>%
 surv_plot <- ggplot() +
     geom_line(
         data = flight_log,
-        aes(y = line, x = tend, colour = legend),
+        aes(y = line, x = tend, linetype = legend),
         size = 1) +
     geom_ribbon(
         data = filter(flight_log, legend == "Flight Probability [%]"),
         aes(x = tend, ymin = surv_lower, ymax = surv_upper),
-        alpha = 0.3,
-        fill = "black") +
-    scale_color_manual(values = c("black", "green", "red")) +
+        alpha = 0.3) +
+    scale_linetype_manual(values = c("solid", "dotted", "longdash")) +
     xlab("Time Since Launch [s]") +
     ylab("Normalised Values") +
     coord_cartesian(ylim = c(0, 1)) +
     theme_bw() +
     theme(
-        axis.text = element_text(size = 40),
-        axis.title = element_text(size = 40, face = "bold"),
         legend.title = element_blank(),
-        legend.text = element_text(size = 20),
-        legend.position = c(0.70, 0.125),
-        legend.box.background = element_rect(colour = "black"))
+        legend.position = "bottom",
+        legend.box = "horizontal",
+        axis.title = element_text(size = 20),
+        axis.text = element_text(size = 15),
+        legend.text = element_text(size = 15)) +
+    guides(linetype = guide_legend(nrow = 3))
 
-ggsave("plots/plot_survival.png", surv_plot, height = 10, width = 10)
+ggsave("plots/survival.png", surv_plot, height = 7, width = 7)
 
 # creating contour plot of flight probability for each species
 advancing <- survival_data %>%
@@ -176,7 +175,7 @@ fid_plot <- ggplot() +
     # define colours for flight probability contours
     scale_fill_brewer(
         type = "div",
-        palette = 8,
+        palette = 5,
         direction = 1,
         aesthetics = "fill") +
     # add line and ribbons at 50% flight probability
@@ -189,7 +188,7 @@ fid_plot <- ggplot() +
             linetype = `Confidence Intervals`),
         colour = "black",
         binwidth = 0.5,
-        size = 3) +
+        size = 5) +
     # define colours for 50% flight prob
     scale_linetype_manual(values = c("solid", "dashed", "dashed")) +
     # add raw flight or no flight endpoints for sub-2kg drones
@@ -199,10 +198,11 @@ fid_plot <- ggplot() +
         colour = factor(ped_status)),
         size = 10) +
     # define colours for raw data
-    scale_color_manual(values = c("red", "green")) +
+    scale_color_manual(values = c("red", "blue")) +
     # make plot aesthetic
     theme_bw() +
-    scale_x_continuous(limits = c(0, 300.5), expand = c(0, 0)) +
+    # scale_x_continuous(limits = c(0, 300.5), expand = c(0, 0)) +
+    scale_x_continuous(limits = c(200, 500.5), expand = c(0, 0)) +
     # scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(limits = c(0, 120), expand = c(0, 0)) +
     # scale_y_continuous(expand = c(0, 0)) +
@@ -212,12 +212,12 @@ fid_plot <- ggplot() +
     labs(colour = "Raw Data") +
     theme(
         panel.spacing = unit(5, "lines"),
-        strip.text = element_text(size = 60, face = "bold"),
+        strip.text = element_text(size = 60),
         plot.margin = margin(1, 1, 1, 1, "in"),
         axis.ticks = element_line(size = 2),
         axis.ticks.length = unit(.15, "in"),
-        axis.text = element_text(size = 60),
-        axis.title = element_text(size = 80, face = "bold"),
+        axis.text = element_text(size = 80),
+        axis.title = element_text(size = 80),
         legend.position = "bottom",
         legend.key.size = unit(1.5, "in"),
         legend.title.align = 0.5,
@@ -225,7 +225,7 @@ fid_plot <- ggplot() +
         legend.box = "horizontal",
         legend.margin = margin(1, 2, 0, 2, unit = "in"),
         legend.text = element_text(size = 50),
-        legend.title = element_text(size = 60, face = "bold")) +
+        legend.title = element_text(size = 60)) +
         guides(
             colour = guide_legend(
                 nrow = 2,
@@ -240,4 +240,11 @@ fid_plot <- ggplot() +
                 title.position = "top",
                 title.hjust = 0.5))
 # save plot
-ggsave("plots/plot_flight_initiation_distance.png", fid_plot, height = 40, width = 40, limitsize = FALSE)
+ggsave("plots/flight_initiation_distance.png", fid_plot, height = 40, width = 40, limitsize = FALSE)
+
+View(filter(advancing, altitude == 120))
+
+ggplot(filter(data_ped, distance_x < 400), aes(x = distance_x, y = distance_z)) +
+geom_point()
+mean(unique(data_ped$cloud_cover))
+sd(unique(data_ped$cloud_cover))
