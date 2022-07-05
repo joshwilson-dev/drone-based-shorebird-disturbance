@@ -48,8 +48,8 @@ ref <- data_ped %>%
     ungroup() %>%
     sample_info()
 
-# load test flight launched from 300m, approach at 120m
-test_flight <- read_csv("data/dibd_test_flight_500.csv")
+# load test flight launched from 500m, approach at 120m
+test_flight <- read_csv("data/dibd_test_flight.csv")
 
 # This function adds the required explanitory variables to the test flight
 log_simulator <- function(fit, altitude_list) {
@@ -104,10 +104,6 @@ survival_data <- log_simulator(fit, altitudes)
 flight_log <- survival_data %>%
     filter(altitude == 120) %>%
     mutate(
-        surv_prob = 1 - surv_prob,
-        surv_lower = 1 - surv_lower,
-        surv_upper = 1 - surv_upper) %>%
-    mutate(
         distance_x = distance_x / max(distance_x),
         distance_z = distance_z / max(distance_z)) %>%
     pivot_longer(
@@ -115,8 +111,8 @@ flight_log <- survival_data %>%
         names_to = "legend",
         values_to = "line") %>%
     mutate(legend = case_when(
-        legend == "surv_prob" ~ "Flight Probability [%]",
-        legend == "distance_x" ~ "Normalised Distance [0:300m]",
+        legend == "surv_prob" ~ "Probability of Birds Not Taking Flight",
+        legend == "distance_x" ~ "Normalised Distance [0:500m]",
         legend == "distance_z" ~ "Normalised Altitude [0:120m]"))
 
 surv_plot <- ggplot() +
@@ -125,7 +121,7 @@ surv_plot <- ggplot() +
         aes(y = line, x = tend, linetype = legend),
         size = 1) +
     geom_ribbon(
-        data = filter(flight_log, legend == "Flight Probability [%]"),
+        data = filter(flight_log, legend == "Probability of Birds Not Taking Flight"),
         aes(x = tend, ymin = surv_lower, ymax = surv_upper),
         alpha = 0.3) +
     scale_linetype_manual(values = c("solid", "dotted", "longdash")) +
@@ -161,6 +157,7 @@ ribbon <- advancing  %>%
         `Confidence Intervals` == "surv_lower" ~ "95% Lower Confidence Interval"))
 
 raw_data <- data_ped %>%
+    filter(specification == "inspire 2") %>%
     mutate(ped_status = case_when(
         ped_status == 1 ~ "Flight",
         ped_status == 0 ~ "No Flight")) %>%
@@ -170,13 +167,13 @@ fid_plot <- ggplot() +
     # create base contour plots
     geom_contour_filled(
         data = advancing,
-        aes(x = distance_x, y = distance_z, z = surv_prob),
+        aes(x = distance_x, y = distance_z, z = 1 - surv_prob - 0.00000000001),
         binwidth = 0.1) +
     # define colours for flight probability contours
     scale_fill_brewer(
         type = "div",
         palette = 5,
-        direction = 1,
+        direction = -1,
         aesthetics = "fill") +
     # add line and ribbons at 50% flight probability
     geom_contour(
@@ -202,18 +199,21 @@ fid_plot <- ggplot() +
     # make plot aesthetic
     theme_bw() +
     # scale_x_continuous(limits = c(0, 300.5), expand = c(0, 0)) +
-    scale_x_continuous(limits = c(200, 500.5), expand = c(0, 0)) +
+    scale_x_continuous(limits = c(0, 504.7720155), expand = c(0, 0)) +
+    coord_equal() +
     # scale_x_continuous(expand = c(0, 0)) +
     scale_y_continuous(limits = c(0, 120), expand = c(0, 0)) +
     # scale_y_continuous(expand = c(0, 0)) +
     xlab("Horizontal Distance [m]") +
     ylab("Altitude [m]") +
-    labs(fill = "Predicted Flight Probability") +
+    labs(fill = "Flight Initiation Probability") +
     labs(colour = "Raw Data") +
+    ggtitle("Inspire 2 Induced Eastern Curlew Flight Initiation Distance") +
     theme(
         panel.spacing = unit(5, "lines"),
         strip.text = element_text(size = 60),
         plot.margin = margin(1, 1, 1, 1, "in"),
+        plot.title = element_text(hjust = 0.5, size = 80),
         axis.ticks = element_line(size = 2),
         axis.ticks.length = unit(.15, "in"),
         axis.text = element_text(size = 80),
@@ -240,7 +240,7 @@ fid_plot <- ggplot() +
                 title.position = "top",
                 title.hjust = 0.5))
 # save plot
-ggsave("plots/flight_initiation_distance.png", fid_plot, height = 40, width = 40, limitsize = FALSE)
+ggsave("plots/flight_initiation_distance.png", fid_plot, height = 40, width = 80, limitsize = FALSE)
 
 View(filter(advancing, altitude == 120))
 
