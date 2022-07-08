@@ -41,8 +41,13 @@ data <- read_csv("data/dibd_data.csv")
 
 # prepare data in ped format
 prepare_data <- function(df) {
-    # create ped parameters
     data_ped <- df %>%
+        # degrade data
+        filter(time_since_launch %% 1 == 0) %>%
+        # remove any time points without more than one instance
+        group_by(time_since_launch) %>%
+        # create ped parameters
+        filter(n() > 1) %>%
         group_by(flight, species) %>%
         mutate(
             ped_status = lead(response),
