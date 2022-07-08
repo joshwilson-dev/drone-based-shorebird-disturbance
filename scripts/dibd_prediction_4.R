@@ -82,7 +82,7 @@ log_simulator <- function(fit, altitude_list) {
                 wind_speed = ref$wind_speed,
                 temperature = ref$temperature,
                 location = ref$location,
-                specification = "inspire 2",
+                specification = "mavic 2 pro",
                 obscuring = "not obscured",
                 count = ref$count,
                 altitude = altitude)
@@ -124,7 +124,7 @@ surv_plot <- ggplot() +
         data = filter(flight_log, legend == "Probability of Birds Not Taking Flight"),
         aes(x = tend, ymin = surv_lower, ymax = surv_upper),
         alpha = 0.3) +
-    scale_linetype_manual(values = c("solid", "dotted", "longdash")) +
+    scale_linetype_manual(values = c("dotted", "longdash", "solid")) +
     xlab("Time Since Launch [s]") +
     ylab("Normalised Values") +
     coord_cartesian(ylim = c(0, 1)) +
@@ -157,7 +157,7 @@ ribbon <- advancing  %>%
         `Confidence Intervals` == "surv_lower" ~ "95% Lower Confidence Interval"))
 
 raw_data <- data_ped %>%
-    filter(specification == "inspire 2") %>%
+    filter(specification != "inspire 2") %>%
     mutate(ped_status = case_when(
         ped_status == 1 ~ "Flight",
         ped_status == 0 ~ "No Flight")) %>%
@@ -241,10 +241,3 @@ fid_plot <- ggplot() +
                 title.hjust = 0.5))
 # save plot
 ggsave("plots/flight_initiation_distance.png", fid_plot, height = 40, width = 80, limitsize = FALSE)
-
-View(filter(advancing, altitude == 120))
-
-ggplot(filter(data_ped, distance_x < 400), aes(x = distance_x, y = distance_z)) +
-geom_point()
-mean(unique(data_ped$cloud_cover))
-sd(unique(data_ped$cloud_cover))

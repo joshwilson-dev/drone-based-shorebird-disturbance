@@ -43,7 +43,7 @@ data <- read_csv("data/dibd_data.csv")
 prepare_data <- function(df) {
     data_ped <- df %>%
         # degrade data
-        filter(time_since_launch %% 1 == 0) %>%
+        filter(response == 1 | time_since_launch %% 1 == 0) %>%
         # remove any time points without more than one instance
         group_by(time_since_launch) %>%
         # create ped parameters

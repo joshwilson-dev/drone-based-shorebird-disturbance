@@ -17,7 +17,7 @@
 rm(list = ls())
 
 # Specify required packages
-packages <- c("readr", "dplyr", "ggplot2", "mgcv", "gratia")
+packages <- c("stringr", "readr", "dplyr", "ggplot2", "mgcv", "gratia")
 new_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
 
 if (length(new_packages)) {
