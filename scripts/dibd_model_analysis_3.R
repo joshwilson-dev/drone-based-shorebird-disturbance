@@ -40,7 +40,7 @@ data_ped <- read_csv("data/dibd_ped_data.csv") %>%
 #### Analysis of fit ####
 #########################
 # load model and print summary
-fit <- readRDS("models/dibd-model-27-06-22_10-19.rds")
+fit <- readRDS("models/dibd-model-5.rds")
 summary(fit)
 
 # smooth terms
