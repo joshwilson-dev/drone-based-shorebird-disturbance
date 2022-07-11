@@ -43,13 +43,14 @@ data <- read_csv("data/dibd_data.csv")
 prepare_data <- function(df) {
     data_ped <- df %>%
         # degrade data but keep first flight
-        mutate(keep = case_when(
-            response == 1 ~ 1,
-            # time_since_launch %% 5 == 0 ~ 1,
-            TRUE ~ 0)) %>%
-        group_by(time_since_launch) %>%
-        mutate(keep = case_when(max(keep) == 1 ~ 1, TRUE ~ 0)) %>%
-        filter(keep == 1) %>%
+        # mutate(keep = case_when(
+        #     response == 1 ~ 1,
+        #     time_since_launch %% 5 == 0 ~ 1,
+        #     TRUE ~ 0)) %>%
+        # group_by(time_since_launch) %>%
+        # mutate(keep = case_when(max(keep) == 1 ~ 1, TRUE ~ 0)) %>%
+        # filter(keep == 1) %>%
+        filter(response == 1 | time_since_launch %% 5 == 0) %>%
         # remove any time points without more than one instance
         group_by(time_since_launch) %>%
         # create ped parameters
